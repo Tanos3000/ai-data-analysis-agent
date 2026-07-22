@@ -8,6 +8,7 @@ import pandas as pd
 from data_loader import load_data
 from query_engine import format_result, run_safe_query
 from schema_context import build_schema_context
+from visualize import maybe_create_chart
 
 MODEL = "qwen2.5:7b"
 MAX_TOOL_ROUNDS = 3
@@ -39,23 +40,27 @@ def _system_prompt(schema: str) -> str:
     )
 
 
-def ask(question: str, df: pd.DataFrame, schema: str) -> str:
+def ask(question: str, df: pd.DataFrame, schema: str) -> tuple[str, str | None]:
+    """Returns (answer_text, chart_path). chart_path is None when no chart made sense."""
     messages = [
         {"role": "system", "content": _system_prompt(schema)},
         {"role": "user", "content": question},
     ]
+    last_result = None
 
     for _ in range(MAX_TOOL_ROUNDS):
         response = ollama.chat(model=MODEL, messages=messages, tools=TOOLS)
 
         if not response.message.tool_calls:
-            return response.message.content
+            chart_path = maybe_create_chart(last_result)
+            return response.message.content, chart_path
 
         messages.append(response.message)
         for call in response.message.tool_calls:
             sql = call.function.arguments["sql"]
             try:
                 result = run_safe_query(df, sql)
+                last_result = result
                 content = format_result(result)
             except Exception as e:
                 # Fed back to the model as a tool result, not raised - this lets
@@ -63,7 +68,7 @@ def ask(question: str, df: pd.DataFrame, schema: str) -> str:
                 content = f"Query failed: {e}"
             messages.append({"role": "tool", "content": content, "tool_name": call.function.name})
 
-    return "Could not produce an answer within the tool-call limit."
+    return "Could not produce an answer within the tool-call limit.", None
 
 
 if __name__ == "__main__":
@@ -72,9 +77,11 @@ if __name__ == "__main__":
 
     questions = [
         "What is the total revenue in this dataset?",
-        "Which country has the highest number of orders?",
+        "What are the top 5 countries by number of orders?",
         "What was the average unit price across all transactions?",
     ]
     for q in questions:
+        answer, chart_path = ask(q, data, schema)
         print(f"Q: {q}")
-        print(f"A: {ask(q, data, schema)}\n")
+        print(f"A: {answer}")
+        print(f"Chart: {chart_path}\n")
