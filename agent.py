@@ -13,22 +13,23 @@ from visualize import maybe_create_chart
 MODEL = "qwen2.5:7b"
 MAX_TOOL_ROUNDS = 3
 
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "run_sql_query",
-            "description": "Run a read-only SQL SELECT query against the 'sales' table and return the result.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "sql": {"type": "string", "description": "A single SELECT statement."},
+def _build_tools(table_name: str) -> list[dict]:
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": "run_sql_query",
+                "description": f"Run a read-only SQL SELECT query against the '{table_name}' table and return the result.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sql": {"type": "string", "description": "A single SELECT statement."},
+                    },
+                    "required": ["sql"],
                 },
-                "required": ["sql"],
             },
-        },
-    }
-]
+        }
+    ]
 
 
 def _system_prompt(schema: str) -> str:
@@ -40,8 +41,9 @@ def _system_prompt(schema: str) -> str:
     )
 
 
-def ask(question: str, df: pd.DataFrame, schema: str) -> tuple[str, str | None]:
+def ask(question: str, df: pd.DataFrame, schema: str, table_name: str = "sales") -> tuple[str, str | None]:
     """Returns (answer_text, chart_path). chart_path is None when no chart made sense."""
+    tools = _build_tools(table_name)
     messages = [
         {"role": "system", "content": _system_prompt(schema)},
         {"role": "user", "content": question},
@@ -49,7 +51,7 @@ def ask(question: str, df: pd.DataFrame, schema: str) -> tuple[str, str | None]:
     last_result = None
 
     for _ in range(MAX_TOOL_ROUNDS):
-        response = ollama.chat(model=MODEL, messages=messages, tools=TOOLS)
+        response = ollama.chat(model=MODEL, messages=messages, tools=tools)
 
         if not response.message.tool_calls:
             chart_path = maybe_create_chart(last_result)
@@ -59,7 +61,7 @@ def ask(question: str, df: pd.DataFrame, schema: str) -> tuple[str, str | None]:
         for call in response.message.tool_calls:
             sql = call.function.arguments["sql"]
             try:
-                result = run_safe_query(df, sql)
+                result = run_safe_query(df, sql, table_name=table_name)
                 last_result = result
                 content = format_result(result)
             except Exception as e:
