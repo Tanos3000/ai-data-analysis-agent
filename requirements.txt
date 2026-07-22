@@ -3,3 +3,5 @@ pandas
 duckdb
 matplotlib
 streamlit
+certifi
+openpyxl
