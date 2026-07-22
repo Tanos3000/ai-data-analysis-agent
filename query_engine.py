@@ -27,6 +27,9 @@ def _validate(sql: str) -> None:
     if ";" in stripped:
         raise UnsafeQueryError("Only a single statement is allowed (no ';' inside the query).")
 
+    if "--" in stripped or "/*" in stripped:
+        raise UnsafeQueryError("SQL comments are not allowed in a query.")
+
     if not stripped.upper().startswith("SELECT"):
         raise UnsafeQueryError("Only SELECT statements are allowed.")
 
