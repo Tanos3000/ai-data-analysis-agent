@@ -6,6 +6,8 @@ Ask a dataset questions in plain English and get a real answer back - the agent 
 
 ![Top 5 countries by revenue, answered by the agent](assets/preview.png)
 
+<!-- TODO(Lennard): 10-Sekunden-Screencast (Frage rein, Antwort + Chart raus) aufnehmen und als assets/demo.gif ablegen, dann hier referenzieren: ![Demo](assets/demo.gif) -->
+
 ## Problem / Motivation
 
 Most people who need an answer from a spreadsheet don't know SQL or pandas - they either bug someone who does, or give up. This project explores the "text-to-query" pattern behind tools like this: a local LLM reads a plain-English question, decides which SQL query answers it, and a small amount of Python code executes that query safely and turns the result into text plus a chart. No cloud API required - everything runs locally via [Ollama](https://ollama.com).
