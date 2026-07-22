@@ -1,5 +1,7 @@
 # AI Data Analysis Agent
 
+![tests](https://github.com/Tanos3000/ai-data-analysis-agent/actions/workflows/tests.yml/badge.svg)
+
 Ask a dataset questions in plain English and get a real answer back - the agent writes the SQL, runs it safely, and charts the result itself.
 
 ![Top 5 countries by revenue, answered by the agent](assets/preview.png)
